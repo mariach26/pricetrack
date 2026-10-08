@@ -4,7 +4,36 @@ import sqlite3
 from bs4 import BeautifulSoup
 import requests
 
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
 DB_NAME="price_tracker.db"
+
+def send_email_alert(title, url, price):
+    sender_email="maraki279@gmail.com"
+    receiver_email="maraki279@gmail.com"
+    password=""
+
+    msg=MIMEMultipart()
+    msg['From']=sender_email
+    msg['To']=receiver_email
+    msg['Subject']=f"Price down in {title}"
+
+    body=f"Μόλις μειώθηκε η τιμή στα {price}.\nΠάτα εδώ {url}"
+    msg.attach(MIMEText(body, 'plain', 'utf-8'))
+
+    try:
+        server=smtplib.SMTP('smtp.gmail.com',587)
+        server.starttls() #κρυπτογραφηση συνδεσης
+        server.login(sender_email, password)
+        server.send_message(msg)
+        server.quit()
+        print("[+]email sent succesfully")
+    except Exception as e:
+        print(f"[-] email error: {e}")
+
+
 
 def initialize_database():
     conn= sqlite3.connect(DB_NAME)
@@ -96,12 +125,12 @@ def track_product(url):
         )
 
         if not title:
-            title= input("enter product name manually: "). strip()
+            title= input("Enter product name manually: "). strip()
 
         while True:
             try:
                 price_input=input(
-                    "enter current price"
+                    "enter current price: "
                 ).strip()
                 price=float(price_input)
                 break
@@ -115,9 +144,14 @@ def track_product(url):
     print(f"\n[+] Product: {title}")
     print(f"[+] Price Logged: {price}")
 
+
+    product_title="..."
+    print(f"successful scraping")
+    
+
       #database things
-    conn.sqlite3.connect(DB_NAME)
-    cursor.conn.cursor()
+    conn=sqlite3.connect(DB_NAME)
+    cursor=conn.cursor()
 
     cursor.execute("SELECT id FROM products WHERE url = ?", (url,))
     result = cursor.fetchone()
@@ -125,6 +159,17 @@ def track_product(url):
     if result:
         product_id=result[0]
         print("[+] Product already exists in database. Adding new price entry...")
+        cursor.execute("SELECT price FROM price_history WHERE product_id = ? ORDER BY date DESC LIMIT 1", (product_id,))
+        last_price_record= cursor.fetchone()
+        if last_price_record:
+            saved_price=last_price_record[0]
+            if price<saved_price:
+                print(f"Τιμή έπεσε από {saved_price} στα {price} ευρώ")
+                send_email_alert(title, url, price)
+            elif price > saved_price:
+                print(f"Η τιμή ανέβηκε από {saved_price} σε {price} ευρώ")
+            else:
+                print("η τιμή έμεινε ίδια")
     else:
         cursor.execute(
             "INSERT INTO products (title, url) VALUES (?, ?)", (title, url)
