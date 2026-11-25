@@ -11,8 +11,8 @@ from email.mime.multipart import MIMEMultipart
 DB_NAME="price_tracker.db"
 
 def send_email_alert(title, url, price):
-    sender_email="maraki279@gmail.com"
-    receiver_email="maraki279@gmail.com"
+    sender_email="your_email"
+    receiver_email="your_email"
     password=""
 
     msg=MIMEMultipart()
